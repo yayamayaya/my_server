@@ -4,6 +4,8 @@ project(server_interface)
 
 #add_definitions(-DDEBUG)
 
+add_compile_definitions(-DBIN_PATH=\"${CMAKE_CURRENT_BINARY_DIR}\")
+
 add_definitions(
 -D _DEBUG -ggdb3 -O0 -Wall -Wextra -Waggressive-loop-optimizations
 -Wmissing-declarations -Wcast-align -Wcast-qual -Wchar-subscripts -Wconversion
