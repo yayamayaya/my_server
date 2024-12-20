@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 #include "debugging.h"
+#include "data_base_stack.h"
 #include "structs.h"
 
 ret_t user_stack_destructor(user_stack *self);
@@ -10,7 +13,14 @@ static ret_t add_user(user_stack *self, user_t user);
 
 static ret_t increase_stack_size(user_stack *self);
 
-no_ret_val_t rm_user(user_stack *self, int user_number);
+no_ret_val_t rm_user(user_stack *self, unsigned long int user_number);
+
+unsigned long int find_user(user_stack *self, const char *username);
+
+user_t return_usr_data(user_stack *self, unsigned long int user_number);
+
+void stack_dump(user_stack *self);
+
 
 ret_t init_user_stack(user_stack **stk_ptr)
 {
@@ -28,6 +38,9 @@ ret_t init_user_stack(user_stack **stk_ptr)
     stack->methods.add_user           = add_user;
     stack->methods.rm_user            = rm_user;
     stack->methods.stack_destructor   = user_stack_destructor;
+    stack->methods.find_user          = find_user;
+    stack->methods.return_usr_data    = return_usr_data;
+    stack->methods.dump               = stack_dump;
 
     *stk_ptr = stack;
 
@@ -69,6 +82,25 @@ ret_t increase_stack_size(user_stack *self)
     return 0;
 }
 
+unsigned long int find_user(user_stack *self, const char *username)
+{
+    assert(self);
+    assert(username);
+
+    for (long unsigned int usr_num = 0; usr_num < self->stack_size; usr_num++)
+        if (!strcmp(self->users[usr_num].username, username))
+            return usr_num;
+    
+    return  USR_NOT_FOUND;
+}
+
+user_t return_usr_data(user_stack *self, unsigned long int user_number)
+{
+    assert(self);
+
+    return self->users[user_number];
+}
+
 ret_t add_user(user_stack *self, user_t user)
 {
     assert(self);
@@ -88,15 +120,43 @@ ret_t add_user(user_stack *self, user_t user)
     return 0;
 }
 
-no_ret_val_t rm_user(user_stack *self, int user_number)
+no_ret_val_t rm_user(user_stack *self, unsigned long int user_number)
 {
     assert(self);
+
+    close(self->users[user_number].rcv_d);
+    close(self->users[user_number].snd_d);
 
     user_t user_holder = self->users[self->users_number - 1];
     user_holder.user_number = user_number;
     self->users[user_number] = user_holder;
 
     self->stack_size--;
+
+    return;
+}
+
+void stack_dump(user_stack *self)
+{
+    assert(self);
+
+    LOG("> --------------------------------------------------------------------------\n");
+    LOG("> stack dump: \n");
+    LOG("> stack size: %lu\n", self->stack_size);
+    LOG("> number of users: %lu\n", self->users_number);
+
+    for (unsigned long int i = 0; i < self->users_number; i++)
+    {
+        LOG("-------------------------------------\n");
+        LOG("user number: %lu\n", i);
+        LOG("username: %s\n", self->users[i].username);
+        LOG("password: %s\n", self->users[i].password);
+        LOG("recieve file descriptor: %d\n", self->users[i].rcv_d);
+        LOG("send file descriptor: %d\n", self->users[i].snd_d);
+    }
+    
+    LOG("> dump ended\n");
+    LOG("> --------------------------------------------------------------------------\n");
 
     return;
 }
