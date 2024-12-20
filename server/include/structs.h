@@ -8,13 +8,14 @@ typedef struct Ops st_op_table;
 typedef int    ret_t;
 typedef void   no_ret_val_t; 
 
-#define DATA_BASE_LOCATION  "/user_data.txt"
+#define USERNAME_MAX_LENGTH 32
+#define USER_PSWRD_MAX_LEN  16
 
 typedef struct user_data
 {
     int user_number;
-    char username[32];
-    char password[16];
+    char username[USERNAME_MAX_LENGTH];
+    char password[USER_PSWRD_MAX_LEN];
     int rcv_d;
     int snd_d;
 } user_t;
