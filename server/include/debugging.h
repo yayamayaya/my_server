@@ -3,10 +3,6 @@
 
 #define STARTING_USER_NUMBER 64
 
-#define LOG(...)        fprintf(stderr, __VA_ARGS__)
-
-#define LOG_ERR(...)    perror(__VA_ARGS__)
-
 #define _RETURN_ON_TRUE(statement, ret_val, ...)            \
     do                                                      \
     {                                                       \
@@ -28,10 +24,28 @@ enum SERVER_RET_VAL
     FILE_OPEN_ERR           = 1326,
 
     BASE_END                = 1012,
-    USR_NOT_FOUND           = 1013,
-    RIGHT_PSWD              = 1014,
-    WRONG_PSWD              = 1015,
+    USR_NOT_FOUND           = 2,
+    RIGHT_PSWD              = 1,
+    WRONG_PSWD              = 0,
 
 };
+
+enum EXIT_STATUS
+{
+    NUMBER_GREATER_SIZE     = 2101,
+};
+
+
+void open_log();
+
+void close_log();
+
+void loggg(const char *format, ...);
+
+void err_log(const char *format);
+
+#define LOG(...)        loggg(__VA_ARGS__)
+
+#define LOG_ERR(...)    err_log(__VA_ARGS__)
 
 #endif
