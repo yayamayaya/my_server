@@ -16,7 +16,7 @@ typedef struct Ops
     user_t (*return_usr_data)(user_stack *self, unsigned long int user_number);
     void (*dump)(user_stack *self);
 
-    ret_t (*stack_destructor)(user_stack *self);
+    no_ret_val_t (*stack_destructor)(user_stack *self);
 } st_op_table;
 
 typedef struct user_base

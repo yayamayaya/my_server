@@ -5,9 +5,9 @@
 #include <string.h>
 #include "debugging.h"
 #include "data_base_stack.h"
-#include "structs.h"
+//#include "structs.h"
 
-ret_t user_stack_destructor(user_stack *self);
+no_ret_val_t user_stack_destructor(user_stack *self);
 
 static ret_t add_user(user_stack *self, user_t user);
 
@@ -48,11 +48,15 @@ ret_t init_user_stack(user_stack **stk_ptr)
 }
 
 //Периодическое обновление базы данных через дополнительную нить исполнения
-ret_t user_stack_destructor(user_stack *self)
+no_ret_val_t user_stack_destructor(user_stack *self)
 {
     assert(self);
 
-    //save_data_base()
+    for (unsigned int i = 0; i < self->stack_size; i++)
+    {
+        close(self->users[i].rcv_d);
+        close(self->users[i].snd_d);
+    }
 
     self->stack_size    = 0;
     self->users_number  = 0;
@@ -62,7 +66,7 @@ ret_t user_stack_destructor(user_stack *self)
 
     free(self);
 
-    return 0;
+    return;
 }
 
 ret_t increase_stack_size(user_stack *self)
@@ -87,16 +91,24 @@ unsigned long int find_user(user_stack *self, const char *username)
     assert(self);
     assert(username);
 
+    if (self->stack_size == 0) LOG("> seeking trough empty stack\n");
+
     for (long unsigned int usr_num = 0; usr_num < self->stack_size; usr_num++)
         if (!strcmp(self->users[usr_num].username, username))
             return usr_num;
     
-    return  USR_NOT_FOUND;
+    return USR_NOT_FOUND;
 }
 
 user_t return_usr_data(user_stack *self, unsigned long int user_number)
 {
     assert(self);
+
+    if (user_number > self->stack_size)
+    {
+        LOG("> seeking user number greater than stack size\n");
+        exit(NUMBER_GREATER_SIZE);
+    }
 
     return self->users[user_number];
 }
@@ -123,6 +135,12 @@ ret_t add_user(user_stack *self, user_t user)
 no_ret_val_t rm_user(user_stack *self, unsigned long int user_number)
 {
     assert(self);
+
+    if (user_number > self->stack_size)
+    {
+        LOG("> no such user number\n");
+        return;
+    }
 
     close(self->users[user_number].rcv_d);
     close(self->users[user_number].snd_d);
