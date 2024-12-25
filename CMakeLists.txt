@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.15)
 
 project(server_interface)
 
+set(CMAKE_C_COMPILER ${C_COMPILER})
+
 #add_definitions(-DDEBUG)
 
 add_compile_definitions(-DBIN_PATH=\"${CMAKE_CURRENT_BINARY_DIR}\")
