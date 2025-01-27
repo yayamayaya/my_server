@@ -47,16 +47,9 @@ ret_t init_user_stack(user_stack **stk_ptr)
     return 0;
 }
 
-//Периодическое обновление базы данных через дополнительную нить исполнения
 no_ret_val_t user_stack_destructor(user_stack *self)
 {
     assert(self);
-
-    for (unsigned int i = 0; i < self->stack_size; i++)
-    {
-        close(self->users[i].rcv_d);
-        close(self->users[i].snd_d);
-    }
 
     self->stack_size    = 0;
     self->users_number  = 0;
@@ -142,9 +135,6 @@ no_ret_val_t rm_user(user_stack *self, unsigned long int user_number)
         return;
     }
 
-    close(self->users[user_number].rcv_d);
-    close(self->users[user_number].snd_d);
-
     user_t user_holder = self->users[self->users_number - 1];
     user_holder.user_number = user_number;
     self->users[user_number] = user_holder;
@@ -165,12 +155,10 @@ void stack_dump(user_stack *self)
 
     for (unsigned long int i = 0; i < self->users_number; i++)
     {
-        LOG("-------------------------------------\n");
-        LOG("user number: %lu\n", i);
-        LOG("username: %s\n", self->users[i].username);
-        LOG("password: %s\n", self->users[i].password);
-        LOG("recieve file descriptor: %d\n", self->users[i].rcv_d);
-        LOG("send file descriptor: %d\n", self->users[i].snd_d);
+        LOG("> -------------------------------------\n");
+        LOG("> user number: %lu\n", i);
+        LOG("> username: %s\n", self->users[i].username);
+        LOG("> password: %s\n", self->users[i].password);
     }
     
     LOG("> dump ended\n");
