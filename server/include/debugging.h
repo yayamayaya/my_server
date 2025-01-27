@@ -1,6 +1,9 @@
 #ifndef DEBUGGING_FUNCS
 #define DEBUGGING_FUNCS
 
+typedef void   no_ret_val_t; 
+typedef int    ret_t;
+
 #define STARTING_USER_NUMBER 64
 
 #define _RETURN_ON_TRUE(statement, ret_val, ...)            \
@@ -8,7 +11,7 @@
     {                                                       \
         if (statement)                                      \
         {                                                   \
-            __VA_ARGS__                                     \
+            __VA_ARGS__;                                    \
             return ret_val;                                 \
         }                                                   \
     } while (0)
@@ -22,11 +25,16 @@ enum SERVER_RET_VAL
     STACK_ADD_ERR           = 1324,
     USER_PARSE_ERR          = 1325,
     FILE_OPEN_ERR           = 1326,
+    PIPE_CONSTRUCTION_ERR   = 1327,
+    MEM_ALC_ERR             = 1328,
+    MAPPING_FAILED          = 1329,
 
     BASE_END                = 1012,
     USR_NOT_FOUND           = 2,
     RIGHT_PSWD              = 1,
     WRONG_PSWD              = 0,
+    FILE_FOUND              = 1,
+    FILE_NOT_FOUND          = 7,
 
 };
 
