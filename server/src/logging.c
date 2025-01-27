@@ -1,5 +1,3 @@
-#define _GNU_SOURCE
-
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
@@ -22,6 +20,8 @@ void open_log()
 void close_log()
 {
     if (log_file) fclose(log_file);
+
+    log_file = NULL;
 }
 
 void loggg(const char *format, ...)
@@ -38,6 +38,7 @@ void loggg(const char *format, ...)
     vfprintf(log_file, format, args);
 
     va_end(args);
+    fflush(log_file);
 }
 
 void err_log(const char *format)
@@ -48,5 +49,5 @@ void err_log(const char *format)
     time(&t);
     fprintf(log_file, "[%s]", strtok(ctime(&t), "\n"));
 
-    fprintf(log_file, "> %s%s\n", format, strerrorname_np(errno));
+    fprintf(log_file, "%s %s\n", format, strerror(errno));
 }
