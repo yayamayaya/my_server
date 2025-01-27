@@ -7,20 +7,20 @@
 #include <limits.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <dirent.h>
 #include <sys/types.h>
 #include "debugging.h"
 #include "data_base_work.h"
 #include "data_base_stack.h"
 #include "structs.h"
 
-static user_stack *data_base_stack = NULL;
 
 ret_t parse_user(user_t *user_ptr, FILE *db_ptr);
 
 ret_t print_user_data(FILE *db_file, const user_t *user);
 
 //Регистриурем нового пользователя
-ret_t register_new_user(const char *username, const char *password, const char *rcv_path, const char *snd_path)
+ret_t register_new_user(user_stack *data_base_stack, const char *username, const char *password, const char *rcv_path, const char *snd_path)
 {
     assert(username);
     assert(password);
@@ -52,7 +52,7 @@ ret_t register_new_user(const char *username, const char *password, const char *
     return 0;
 }
 
-pswd_t check_pswd(const char *username, const char *password)
+pswd_t check_pswd(user_stack *data_base_stack, const char *username, const char *password)
 {
     assert(username);
     assert(password);
@@ -64,7 +64,7 @@ pswd_t check_pswd(const char *username, const char *password)
     return !strcmp(user_data.password, password) ? RIGHT_PSWD : WRONG_PSWD;
 }
 
-void user_base_dump()
+void user_base_dump(user_stack *data_base_stack)
 {
     assert(data_base_stack);
 
@@ -73,11 +73,11 @@ void user_base_dump()
     return;
 }
 
-ret_t finish_db_work()
+ret_t finish_db_work(user_stack *data_base_stack)
 {
     assert(data_base_stack);
 
-    ret_t ret_val = save_data_base();
+    ret_t ret_val = save_data_base(data_base_stack);
     
     data_base_stack->methods.stack_destructor(data_base_stack);
 
@@ -85,17 +85,13 @@ ret_t finish_db_work()
 }
 
 //------------------------Читаем базу данных----------------------------------------------------
-ret_t read_data_base()
+ret_t read_data_base(user_stack *data_base_stack)
 {
+    ret_t ret_val = 0;
     char path[PATH_MAX] = {};
     snprintf(path, PATH_MAX * sizeof(char), "%s%s", BIN_PATH, DATA_BASE_LOCATION);
-#
+
     LOG("> data base location is: %s\n", path);
-
-    LOG("> user stack init\n");
-
-    ret_t ret_val = init_user_stack(&data_base_stack);
-    _RETURN_ON_TRUE(ret_val, ret_val);
 
     LOG("> initialising data base:\n");
     LOG("> opening data base file\n");
@@ -161,33 +157,15 @@ ret_t parse_user(user_t *user_ptr, FILE *db_ptr)
     assert(user_ptr);
     assert(db_ptr);
 
-    user_t  user_holder     = {};
+    user_t  user_data     = {};
     int     char_scanned    = 0;
-    char    path[PATH_MAX]  = {0};
 
-    if (fscanf(db_ptr, USERNAME_LINE, user_holder.username) != 1) return USER_PARSE_ERR;
+    if (fscanf(db_ptr, USERNAME_LINE, user_data.username) != 1) return USER_PARSE_ERR;
     LOG("> username parsed\n");
-    if (fscanf(db_ptr, PASSWORD_LINE, user_holder.password) != 1) return USER_PARSE_ERR;
+    if (fscanf(db_ptr, PASSWORD_LINE, user_data.password) != 1) return USER_PARSE_ERR;
     LOG("> password parsed\n");
 
-    if (fscanf(db_ptr, RCV_FILE_LINE, path) != 1)                 return USER_PARSE_ERR;
-    LOG("> rcv file parsed\n");
-
-    //Убрать O_CREAT
-    int rcv_fd = open(path, 0777 | O_CREAT);
-    _RETURN_ON_TRUE(rcv_fd == -1, -1, LOG_ERR("> fifo file open error: "););
-
-    if (fscanf(db_ptr, SND_FILE_LINE, path) != 1)                 return USER_PARSE_ERR;
-    LOG("> snd file parsed\n");
-
-    //Убрать O_CREAT
-    int snd_fd = open(path, 0777 | O_CREAT);
-    _RETURN_ON_TRUE(snd_fd == -1, -1, LOG_ERR("> fifo file open error: "); close(rcv_fd););
-
-    user_holder.rcv_d = rcv_fd;
-    user_holder.snd_d = snd_fd;
-
-    *user_ptr = user_holder;
+    *user_ptr = user_data;
 
     fscanf(db_ptr, LONG_LINE_N, &char_scanned);
     if (!char_scanned)
@@ -198,9 +176,8 @@ ret_t parse_user(user_t *user_ptr, FILE *db_ptr)
     return 0;
 }
 
-//check user existance
 
-ret_t save_data_base()
+ret_t save_data_base(user_stack *data_base_stack)
 {
     assert(data_base_stack);
 
@@ -228,20 +205,9 @@ ret_t print_user_data(FILE *db_file, const user_t *user)
     assert(db_file);    
     assert(user);
 
-    char path[PATH_MAX] = {0};
 
     fprintf(db_file, USERNAME_LINE, user->username);
     fprintf(db_file, PASSWORD_LINE, user->password);
-
-    snprintf(path, PATH_MAX * sizeof(char), FILEPATH_DATA, user->rcv_d);
-    LOG("> path on proc is: %s\n", path);
-    _RETURN_ON_TRUE(readlink(path, path, PATH_MAX * sizeof(char)) == -1, -1, LOG_ERR("readlink err: "););
-    fprintf(db_file, RCV_FILE_LINE, path);
-
-    snprintf(path, PATH_MAX * sizeof(char), FILEPATH_DATA, user->snd_d);
-    LOG("> path on proc is: %s\n", path);
-    _RETURN_ON_TRUE(readlink(path, path, PATH_MAX * sizeof(char)) == -1, -1, LOG_ERR("readlink err: "););
-    fprintf(db_file, SND_FILE_LINE, path);
 
     return 0;
 }
