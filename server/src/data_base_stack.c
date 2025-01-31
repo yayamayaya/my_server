@@ -149,7 +149,7 @@ void stack_dump(user_stack *self)
     assert(self);
 
     LOG("}> --------------------------------------------------------------------------\n");
-    LOG("}> stack dump: \n");
+    LOG("}> DATA BASE stack dump: \n");
     LOG("}> stack size: %lu\n", self->stack_size);
     LOG("}> number of users: %lu\n", self->users_number);
 
