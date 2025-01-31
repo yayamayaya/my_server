@@ -4,8 +4,6 @@
 typedef void   no_ret_val_t; 
 typedef int    ret_t;
 
-#define STARTING_USER_NUMBER 64
-
 #define _RETURN_ON_TRUE(statement, ret_val, ...)            \
     do                                                      \
     {                                                       \
@@ -28,6 +26,11 @@ enum SERVER_RET_VAL
     PIPE_CONSTRUCTION_ERR   = 1327,
     MEM_ALC_ERR             = 1328,
     MAPPING_FAILED          = 1329,
+    HOST_STACK_INIT_ERR     = 1330,
+    HOST_ARR_INIT_ERR       = 1331,
+    HOST_ARR_REALLC_ERR     = 1332,
+    REQ_STACK_INIT_ERR      = 1333,
+    REQ_STACK_MEM_ALC_ERR   = 1334,
 
     BASE_END                = 1012,
     USR_NOT_FOUND           = 2,
