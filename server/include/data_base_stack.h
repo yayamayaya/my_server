@@ -3,6 +3,8 @@
 
 #include "structs.h"
 
+#define STARTING_USER_NUMBER 64
+
 typedef struct user_data user_t;
 typedef struct user_base user_stack;
 typedef struct Ops st_op_table;
