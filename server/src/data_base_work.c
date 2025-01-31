@@ -26,18 +26,18 @@ ret_t register_new_user(user_stack *data_base_stack, const char *username, const
     assert(password);
     assert(data_base_stack);
 
-    LOG("> registering new user:\n");
+    LOG("]> registering new user:\n");
 
     user_t new_user = {};
     memcpy(new_user.username, username, strlen(username));
     memcpy(new_user.password, password, strlen(password));
 
-    LOG("> creating fifo files\n");
+    LOG("]> creating fifo files\n");
 
-    _RETURN_ON_TRUE(mkfifo(rcv_path, 0777 | O_CREAT) == -1, -1, LOG_ERR("> fifo creation error:"););
-    _RETURN_ON_TRUE(mkfifo(snd_path, 0777 | O_CREAT) == -1, -1, LOG_ERR("> fifo creation error:"); unlink(rcv_path););
+    _RETURN_ON_TRUE(mkfifo(rcv_path, 0777 | O_CREAT) == -1, -1, LOG_ERR("]> fifo creation error:"););
+    _RETURN_ON_TRUE(mkfifo(snd_path, 0777 | O_CREAT) == -1, -1, LOG_ERR("]> fifo creation error:"); unlink(rcv_path););
 
-    LOG("> adding new user to stack\n");
+    LOG("]> adding new user to stack\n");
 
     if (data_base_stack->methods.add_user(data_base_stack, new_user))
     {
@@ -47,7 +47,7 @@ ret_t register_new_user(user_stack *data_base_stack, const char *username, const
         return STACK_ADD_ERR;
     }
 
-    LOG("> complete\n");
+    LOG("]> complete\n");
 
     return 0;
 }
@@ -58,7 +58,7 @@ pswd_t check_pswd(user_stack *data_base_stack, const char *username, const char 
     assert(password);
 
     long unsigned int usr_num = data_base_stack->methods.find_user(data_base_stack, username);
-    _RETURN_ON_TRUE(usr_num == USR_NOT_FOUND, USR_NOT_FOUND, LOG("> searched user wasn't found\n"););
+    _RETURN_ON_TRUE(usr_num == USR_NOT_FOUND, USR_NOT_FOUND, LOG("]> searched user wasn't found\n"););
 
     user_t user_data = data_base_stack->methods.return_usr_data(data_base_stack, usr_num);
     return !strcmp(user_data.password, password) ? RIGHT_PSWD : WRONG_PSWD;
@@ -91,22 +91,22 @@ ret_t read_data_base(user_stack *data_base_stack)
     char path[PATH_MAX] = {};
     snprintf(path, PATH_MAX * sizeof(char), "%s%s", BIN_PATH, DATA_BASE_LOCATION);
 
-    LOG("> data base location is: %s\n", path);
+    LOG("]> data base location is: %s\n", path);
 
-    LOG("> initialising data base:\n");
-    LOG("> opening data base file\n");
+    LOG("]> initialising data base:\n");
+    LOG("]> opening data base file\n");
     
     FILE *data_base_file = fopen(path, "rb");
     if (!data_base_file)
     {
-        LOG("> couldn't open data base file: ");
+        LOG("]> couldn't open data base file: ");
         if (errno == ENOENT)
         {
             LOG("file don't exist, creating new file:\n");
             errno = 0;
 
             data_base_file = fopen(path, "w");
-            _RETURN_ON_TRUE(!data_base_file, FILE_OPEN_ERR, LOG("> error...\n");
+            _RETURN_ON_TRUE(!data_base_file, FILE_OPEN_ERR, LOG("]> error...\n");
                 data_base_stack->methods.stack_destructor(data_base_stack););
 
             return 0;
@@ -121,12 +121,12 @@ ret_t read_data_base(user_stack *data_base_stack)
     stat(path, &buff);
     if (buff.st_size == 0)
     {
-        LOG("> data base is empty\n");
+        LOG("]> data base is empty\n");
         fclose(data_base_file);
         return 0;
     }
     
-    LOG("> parsing users\n");
+    LOG("]> parsing users\n");
     while (ret_val != BASE_END)
     {
         user_t user = {0};
@@ -134,7 +134,7 @@ ret_t read_data_base(user_stack *data_base_stack)
         ret_val = parse_user(&user, data_base_file);
         if (ret_val && ret_val != BASE_END)
         {
-            LOG("> parsing error occured\n");
+            LOG("]> parsing error occured\n");
             fclose(data_base_file);
             data_base_stack->methods.stack_destructor(data_base_stack);
             data_base_stack = NULL;
@@ -145,7 +145,7 @@ ret_t read_data_base(user_stack *data_base_stack)
         data_base_stack->methods.add_user(data_base_stack, user);
     }
     
-    LOG("> parsing complete, data base is initiated\n");
+    LOG("]> parsing complete, data base is initiated\n");
 
     fclose(data_base_file);
 
@@ -161,9 +161,9 @@ ret_t parse_user(user_t *user_ptr, FILE *db_ptr)
     int     char_scanned    = 0;
 
     if (fscanf(db_ptr, USERNAME_LINE, user_data.username) != 1) return USER_PARSE_ERR;
-    LOG("> username parsed\n");
+    LOG("]> username parsed\n");
     if (fscanf(db_ptr, PASSWORD_LINE, user_data.password) != 1) return USER_PARSE_ERR;
-    LOG("> password parsed\n");
+    LOG("]> password parsed\n");
 
     *user_ptr = user_data;
 
@@ -184,7 +184,7 @@ ret_t save_data_base(user_stack *data_base_stack)
     char path[PATH_MAX] = {0};
 
     FILE *db_temp_file = fopen(TMP_BASE_PATH, "wb");
-    _RETURN_ON_TRUE(!db_temp_file, FILE_OPEN_ERR, LOG("> couldn't open tmp db file\n"););
+    _RETURN_ON_TRUE(!db_temp_file, FILE_OPEN_ERR, LOG("]> couldn't open tmp db file\n"););
 
     for (unsigned int i = 0; i < data_base_stack->stack_size; i++)
     {
@@ -195,7 +195,7 @@ ret_t save_data_base(user_stack *data_base_stack)
     fclose(db_temp_file);
 
     snprintf(path, PATH_MAX * sizeof(char), "%s%s", BIN_PATH, DATA_BASE_LOCATION);
-    _RETURN_ON_TRUE(rename(TMP_BASE_PATH, path) == -1, -1, LOG_ERR("> couldn't rename an database: "););
+    _RETURN_ON_TRUE(rename(TMP_BASE_PATH, path) == -1, -1, LOG_ERR("]> couldn't rename an database: "););
 
     return 0;
 }
