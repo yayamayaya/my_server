@@ -37,8 +37,10 @@ ret_t connection_manage_process()
     
     LOG("> connection attempt handler start:\n");
     ret_t func_ret_val = 0;
-    while (!server_shutdown)
+    while (!func_ret_val)//!server_shutdown)
         func_ret_val = connection_attempt_handler(msgq, listen_socket_fd, &server_adress);
+
+    if (msgctl(msgq, IPC_RMID, NULL) == -1) LOG_ERR("> msg queue rm err:");
     
     return func_ret_val;
 }
@@ -84,10 +86,10 @@ ret_t connection_attempt_handler(const msqd_t msgid, const sockd_t listen_descr,
 
     sockd_t new_conn = accept(listen_descr, (struct sockaddr *)server_address, &address_length);
     _RETURN_ON_TRUE(new_conn == -1, -1, LOG_ERR("> couldn't create new connection:"));
-    LOG("> connection occured, sending new socket descriptor to \n");
+    LOG("> connection occured, sending new socket descriptor to socket stack\n");
 
     struct msgbuf data = {1, new_conn};
-    _RETURN_ON_TRUE(msgsnd(msgid, &data, sizeof(data), 0) != sizeof(data), -1, LOG_ERR("> msg send error:"));
+    _RETURN_ON_TRUE(msgsnd(msgid, &data, sizeof(sockd_t), 0) != 0, -1, LOG_ERR("> msg send error:"));
     LOG("> new socket data sent\n");
 
     return 0;
