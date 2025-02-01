@@ -31,9 +31,13 @@ ret_t connection_manage_process()
     _RETURN_ON_TRUE(listen_socket_fd == -1, -1);
 
     LOG("> creating server ipc bind\n");
-    msqd_t msgq = init_ipc(IPC_CREAT | IPC_EXCL | 0777);
+    msqd_t msgq = init_ipc(1, IPC_CREAT | IPC_EXCL | 0777);
     _RETURN_ON_TRUE(msgq == -1, -1, close(listen_socket_fd));
     LOG("> ipc bind created\n");
+
+    LOG("> sending test msg\n");
+    struct msgbuf test_data = {1, 5};
+    msgsnd(msgq, &test_data, sizeof(sockd_t), 0);
     
     LOG("> connection attempt handler start:\n");
     ret_t func_ret_val = 0;
