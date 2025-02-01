@@ -60,13 +60,13 @@ ret_t increase_stack_size(host_stack *self)
 {
     assert(self);
 
-    LOG("}> increasing user staack size\n");
+    LOG("}> increasing hosts stack size\n");
 
     self->stack_size <<= 2;
-    struct pollfd *base_holder = (struct pollfd *)realloc(self->hosts, self->stack_size * sizeof(struct pollfd));
-    _RETURN_ON_TRUE(!base_holder, HOST_ARR_REALLC_ERR, LOG("}> couldn't increase memory for pollfd arr\n"); self->stack_size >>= 2;);
+    struct pollfd *arr_holder = (struct pollfd *)realloc(self->hosts, self->stack_size * sizeof(struct pollfd));
+    _RETURN_ON_TRUE(!arr_holder, HOST_ARR_REALLC_ERR, LOG("}> couldn't increase memory for pollfd arr\n"); self->stack_size >>= 2;);
 
-    self->hosts = base_holder;
+    self->hosts = arr_holder;
 
     LOG("}> success\n");
 
@@ -100,8 +100,8 @@ no_ret_val_t rm_host(host_stack *self, int fd_num)
         host_counter++;
     
     self->hosts_number--;
-    memcpy(&self->hosts[host_counter], &self->hosts[self->hosts_number], sizeof(struct pollfd));
-    memset(&self->hosts[self->hosts_number], 0, sizeof(struct pollfd));
+    memcpy(self->hosts + host_counter, self->hosts + self->hosts_number, sizeof(struct pollfd));
+    memset(self->hosts + self->hosts_number, 0, sizeof(struct pollfd));
 
     return;
 }
@@ -119,7 +119,7 @@ void host_stk_dump(host_stack *self)
     {
         LOG("}> -------------------------------------\n");
         LOG("}> host number: %lu\n", i);
-        LOG("}> fd: %s\n", self->hosts[i].fd);
+        LOG("}> fd: %d\n", self->hosts[i].fd);
     }
     
     LOG("}> dump ended\n");
