@@ -1,4 +1,4 @@
-/*#include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <memory.h>
@@ -9,13 +9,13 @@
 
 no_ret_val_t req_stack_destructor(req_stack *self);
 
-static ret_t add_req(req_stack *self, struct pollfd host);
+static ret_t add_req(req_stack *self, sockd_t new_req_sock);
 
 static ret_t increase_stack_size(req_stack *self);
 
-no_ret_val_t rm_host(req_stack *self, int fd_num);
+sockd_t pop_req(req_stack *self);
 
-void host_stk_dump(req_stack *self);
+void req_stk_dump(req_stack *self);
 
 
 ret_t init_req_stack(req_stack **stk_ptr)
@@ -25,16 +25,16 @@ ret_t init_req_stack(req_stack **stk_ptr)
     req_stack *stack = (req_stack *)calloc(1, sizeof(req_stack));
     _RETURN_ON_TRUE(!stack, REQ_STACK_INIT_ERR, LOG("}> couldn't allocate memory for host stack\n"););
 
-    stack->requests  = (struct pollfd *)calloc(INITIAL_NUMBER_OF_REQUESTS, sizeof(sockd_t));
+    stack->requests  = (sockd_t *)calloc(INITIAL_NUMBER_OF_REQUESTS, sizeof(sockd_t));
     _RETURN_ON_TRUE(!stack->requests, REQ_STACK_MEM_ALC_ERR, LOG("}> couldn't allocate memory for pollfd array\n"););
 
     stack->req_number     = 0;
     stack->stack_size     = INITIAL_NUMBER_OF_REQUESTS;
 
-    stack->methods.add_host           = add_host;
-    stack->methods.rm_host            = rm_host;
+    stack->methods.add_request        = add_req;
+    stack->methods.pop_req            = pop_req;
     stack->methods.stack_destructor   = req_stack_destructor;
-    stack->methods.dump               = host_stk_dump;
+    stack->methods.dump               = req_stk_dump;
 
     *stk_ptr = stack;
 
@@ -60,13 +60,13 @@ ret_t increase_stack_size(req_stack *self)
 {
     assert(self);
 
-    LOG("}> increasing user staack size\n");
+    LOG("}> increasing request stack size\n");
 
     self->stack_size <<= 2;
-    struct pollfd *base_holder = (struct pollfd *)realloc(self->requests, self->stack_size * sizeof(sockd_t));
-    _RETURN_ON_TRUE(!base_holder, HOST_ARR_REALLC_ERR, LOG("}> couldn't increase memory for pollfd arr\n"); self->stack_size >>= 2;);
+    sockd_t *arr_holder = (sockd_t *)realloc(self->requests, self->stack_size * sizeof(sockd_t));
+    _RETURN_ON_TRUE(!arr_holder, HOST_ARR_REALLC_ERR, LOG("}> couldn't increase memory for pollfd arr\n"); self->stack_size >>= 2;);
 
-    self->requests = base_holder;
+    self->requests = arr_holder;
 
     LOG("}> success\n");
 
@@ -95,16 +95,15 @@ sockd_t pop_req(req_stack *self)
 {
     assert(self);
 
+    sockd_t current_req_socket = self->requests[0];
 
-    
     self->req_number--;
-    memcpy(&self->requests[host_counter], &self->requests[self->req_number], sizeof(struct pollfd));
-    memset(&self->requests[self->req_number], 0, sizeof(struct pollfd));
-
-    return;
+    memmove(self->requests, self->requests + 1, self->req_number);
+    
+    return current_req_socket;
 }
 
-void host_stk_dump(req_stack *self)
+void req_stk_dump(req_stack *self)
 {
     assert(self);
 
@@ -117,7 +116,7 @@ void host_stk_dump(req_stack *self)
     {
         LOG("}> -------------------------------------\n");
         LOG("}> host number: %lu\n", i);
-        LOG("}> fd: %s\n", self->requests[i].fd);
+        LOG("}> fd: %d\n", self->requests[i]);
     }
     
     LOG("}> dump ended\n");
@@ -125,5 +124,3 @@ void host_stk_dump(req_stack *self)
 
     return;
 }
-
-*/
