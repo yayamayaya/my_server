@@ -15,6 +15,6 @@ struct msgbuf
     sockd_t descr;
 };  
 
-msqd_t init_ipc(int flag);
+msqd_t init_ipc(const int ipc_number, const int flag);
 
 #endif
