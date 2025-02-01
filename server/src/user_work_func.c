@@ -1,39 +1,25 @@
 #include <stdio.h>
 #include <unistd.h>
-#include <assert.h>
-#include "data_base_stack.h"
-#include "data_base_work.h"
-#include "user_work_func.h"
 #include "debugging.h"
-
-user_stack *data_base_init();
-
+#include "msg_ipc.h"
+//#include 
 
 ret_t user_work_process()
-{
-    //ret_t ret_val = 0;
-    LOG("}> user stack initiation:\n");
-    user_stack *user_base = data_base_init();
-    _RETURN_ON_TRUE(!user_base, -1);
+{  
+    ret_t ret_val = 0;
 
-    user_base->methods.stack_destructor(user_base);
+    LOG("> inititating user work ipc");
+    msqd_t msgd = init_ipc(2, IPC_CREAT | IPC_EXCL | 0777);
+    _RETURN_ON_TRUE(msgd == -1, -1);
 
-    return 0;
-}
+    struct msgbuf requesting_socket = {};
+    
+    while(1)
+    {
+        ret_val = msgrcv(msgd, &requesting_socket, sizeof(sockd_t), 2, 0);
+        
+    }
 
-user_stack *data_base_init()
-{
-    LOG("}> creating data base stack:\n");
-    user_stack *user_base = NULL;
-    ret_t ret_val = init_user_stack(&user_base);
-    _RETURN_ON_TRUE(ret_val, NULL);
 
-    LOG("}> parsing data base:\n");
-    ret_val = read_data_base(user_base);
-    _RETURN_ON_TRUE(ret_val, NULL);
-
-    LOG("}> dumping data base:\n");
-    user_base_dump(user_base);
-
-    return user_base;
+    //Работа с нитями
 }
