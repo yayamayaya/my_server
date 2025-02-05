@@ -1,23 +1,53 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <sys/socket.h>
 #include "debugging.h"
+#include "connection_work_func.h"
 #include "msg_ipc.h"
-//#include 
+#include "user_work_func.h"
+#include "descr_sending_funcs.h"
 
 ret_t user_work_process()
 {  
-    ret_t ret_val = 0;
+    ssize_t bytes_rcvd = 0;
 
-    LOG("> inititating user work ipc");
-    msqd_t msgd = init_ipc(2, IPC_CREAT | IPC_EXCL | 0777);
-    _RETURN_ON_TRUE(msgd == -1, -1);
-
-    struct msgbuf requesting_socket = {};
+    LOG("/> inititating user work ipc\n");
+    /*sockd_t msg_sock = init_ipc(2, IPC_CREAT | IPC_EXCL | 0777);
+    _RETURN_ON_TRUE(msg_sock == -1, -1);
+    _RETURN_ON_TRUE(test_msg(msg_sock, RCV, 2) == -1, -1,
+    msgctl(msg_sock, IPC_RMID, NULL));*/
     
+    //Временно
+    sleep(1);
+
+    LOG("/> connecting to unix socket:\n");
+    sockd_t msg_sock = connect_to_unix_socket(USER_WORK_UNIX_SOCKET_PATH);
+    _RETURN_ON_TRUE(msg_sock == -1, -1);
+    LOG("/> done\n");
+
+    struct pollfd msg_sock_poll = {};
+    msg_sock_poll.fd        = msg_sock;
+    msg_sock_poll.events    = POLLIN;
+
+    LOG("/> waiting for first requests\n");
     while(1)
     {
-        ret_val = msgrcv(msgd, &requesting_socket, sizeof(sockd_t), 2, 0);
-        
+        if (!poll(&msg_sock_poll, 1, UNIX_SOCKET_POLL_TIMEOUT)) continue;
+        LOG("/> UNIX SOCKET REVENT: %d\n", msg_sock_poll.revents);
+        msg_sock_poll.revents = 0;
+
+        sockd_t req_socket = rcv_open_file_descriptor(msg_sock);
+        if (req_socket == -1) LOG("/> error occured while rcving request socket\n");
+
+        LOG("/> requesting socket descr is: %d\n", req_socket);
+
+        LOG("/> recieving test data from descriptor: \n");
+        char data[32] = {0};
+        bytes_rcvd = recv(req_socket, data, 32 * sizeof(char), 0);
+        if (bytes_rcvd == -1) LOG_ERR("/> recv failed:");
+        else LOG("%s\n", data);
     }
 
 

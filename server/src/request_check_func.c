@@ -7,112 +7,162 @@
 #include "request_check_func.h"
 #include "msg_ipc.h"
 #include "debugging.h"
+#include "descr_sending_funcs.h"
 
-ret_t create_all_stacks(stacks_st *stacks);
+ret_t create_all_process_data(process_data_st *p_data);
 
-no_ret_val_t stacks_destr(stacks_st *stacks);
+no_ret_val_t stacks_destr(process_data_st *p_data);
 
 user_stack *data_base_init();
 
-ret_t update_active_hosts(host_stack *hosts, const msqd_t msgd);
+ret_t update_active_hosts(process_data_st *p_data);
 
-ret_t poll_cycle(stacks_st *stacks, const msqd_t msgd);
+no_ret_val_t poll_cycle(process_data_st *p_data);
 
-ret_t send_new_request(stacks_st *stacks, ret_t poll_ret_val);
+no_ret_val_t send_new_request(process_data_st *p_data, ret_t poll_ret_val);
 
+
+//TO DO: перенос стека пользователей в процесс рабоыт с пользователями
 
 ret_t request_check_process()
 {
-    LOG("}> creating ipc:\n");
-    msqd_t msgd = init_ipc(1, 0);
-    _RETURN_ON_TRUE(msgd == -1, -1);
-
-    LOG("}> recieving test msg:\n");
-    struct msgbuf rcv_test = {};
-    msgrcv(msgd, &rcv_test, sizeof(sockd_t), 1, 0);
-    LOG("}> test number recieved is: \"%d\"\n", rcv_test.descr);
-
-    LOG("}> initialising stacks:\n");
-    stacks_st stacks = {};
-    ret_t ret_val = create_all_stacks(&stacks);
+    LOG("}> initialising all data struct:\n");
+    process_data_st p_data = {};
+    ret_t ret_val = create_all_process_data(&p_data);
     _RETURN_ON_TRUE(ret_val, ret_val);
 
     LOG("}> waiting for first hosts:\n");
     ret_t update_ret_val = 0;
     while (1)
     {
-        update_ret_val = update_active_hosts(stacks.active_hosts, msgd);
+        update_ret_val = update_active_hosts(&p_data);
         if (update_ret_val == 1) break;
         _RETURN_ON_TRUE(update_ret_val, update_ret_val);
     }
     LOG("}> first host connected, starting full work:\n");
 
+    poll_cycle(&p_data);
 
+    p_data.active_hosts->methods.dump(p_data.active_hosts);
 
-    stacks.active_hosts->methods.dump(stacks.active_hosts);
-
-    stacks_destr(&stacks);
+    stacks_destr(&p_data);
     
     return 0;
 }
 
-ret_t update_active_hosts(host_stack *hosts, const msqd_t msgd)
+ret_t update_active_hosts(process_data_st *p_data)
 {
-    assert(hosts);
+    assert(p_data);
 
-    static struct pollfd msg_descr = {0, POLLIN, 0};
-    msg_descr.fd = msgd;
+    static struct pollfd msg_descr = {0};
+    msg_descr.fd        = p_data->conn_msg_s;
+    msg_descr.events    = POLLIN;
 
-    if (!poll(&msg_descr, 1, HOST_UPDATE_TIME)) return 0;
+    LOG("}> updating active hosts:\n");
 
-    struct msgbuf data = {};
-    _RETURN_ON_TRUE(msgrcv(msgd, &data, sizeof(sockd_t), 1, 0) == -1, -1, LOG("}> msg rcv error:"));
+    ret_t ret_val = poll(&msg_descr, 1, HOST_UPDATE_TIME);
+    _RETURN_ON_TRUE(ret_val == -1, 0, LOG_ERR("}> poll error:"));
+    if (!ret_val) return 0;
+    LOG("}> HOST REVENT: %d\n", msg_descr.revents);
+
+    //struct msgbuf data = {};
+    int rcvd_descr = rcv_open_file_descriptor(p_data->conn_msg_s);
+    _RETURN_ON_TRUE(rcvd_descr == -1, -1);
 
     struct pollfd host_descr = {};
-    host_descr.fd       = data.descr;
+    host_descr.fd       = rcvd_descr;
     host_descr.events   = POLLIN;
-    _RETURN_ON_TRUE(hosts->methods.add_host(hosts, host_descr), HOST_ARR_REALLC_ERR);
+    _RETURN_ON_TRUE(p_data->active_hosts->methods.add_host(p_data->active_hosts, host_descr), HOST_ARR_REALLC_ERR);
 
     return 1;
 }
 
-ret_t create_all_stacks(stacks_st *stacks)
+ret_t create_all_process_data(process_data_st *p_data)
 {
-    assert(stacks);
+    assert(p_data);
 
-    LOG("}> request queue creation:\n");
+    /*LOG("}> request queue creation:\n");
     req_stack *req_queue = NULL;
     ret_t ret_val = init_req_stack(&req_queue);
     _RETURN_ON_TRUE(ret_val, ret_val);
-    LOG("}> done\n");
+    LOG("}> done\n");*/
+
+    LOG("}> creating connection msg line ipc:\n");
+    /*msqd_t msgd = init_ipc(1, 0);
+    _RETURN_ON_TRUE(msgd == -1, -1);
+    _RETURN_ON_TRUE(test_msg(msgd, RCV, 1) == -1, -1,
+        msgctl(p_data->conn_msg_d, IPC_RMID, NULL));
+    p_data->conn_msg_d = msgd;
+
+    LOG("}> creating user work msg line ipc:\n");
+    msgd = init_ipc(2, 0);
+    _RETURN_ON_TRUE(msgd == -1, -1, 
+        msgctl(p_data->conn_msg_d, IPC_RMID, NULL));
+    _RETURN_ON_TRUE(test_msg(msgd, SND, 2) == -1, -1, 
+        msgctl(p_data->conn_msg_d, IPC_RMID, NULL);
+        msgctl(p_data->work_msg_d, IPC_RMID, NULL));
+    p_data->work_msg_d = msgd;*/
+
+    sockd_t conn_manager_listen_socket = open_unix_listen_socket(CONN_WORK_UNIX_SOCKET_PATH);
+    _RETURN_ON_TRUE(conn_manager_listen_socket == -1, -1);
+    sockd_t user_work_listen_socket    = open_unix_listen_socket(USER_WORK_UNIX_SOCKET_PATH);
+    _RETURN_ON_TRUE(user_work_listen_socket == -1, -1, close(conn_manager_listen_socket));
+
+    sockd_t conn_manager_socket = accept_unix_connection(conn_manager_listen_socket, CONN_WORK_UNIX_SOCKET_PATH);
+    _RETURN_ON_TRUE(conn_manager_socket == -1, -1,
+        close(conn_manager_listen_socket);
+        close(user_work_listen_socket));
+    sockd_t user_work_socket    = accept_unix_connection(user_work_listen_socket, USER_WORK_UNIX_SOCKET_PATH);
+    _RETURN_ON_TRUE(user_work_socket == -1, -1,
+        close(conn_manager_socket);
+        close(conn_manager_listen_socket);
+        close(user_work_listen_socket));
+
+    p_data->conn_msg_s = conn_manager_socket;
+    LOG("}> connection manager socket: %d\n", conn_manager_socket);
+    p_data->work_msg_s = user_work_socket;
+    LOG("}> user work socket: %d\n", user_work_socket);
 
     LOG("}> hosts stack initialisation:\n");
     host_stack *hosts = NULL;
-    ret_val = init_host_stack(&hosts);
-    _RETURN_ON_TRUE(ret_val, ret_val, req_queue->methods.stack_destructor(req_queue));
+    ret_t ret_val = init_host_stack(&hosts);
+    _RETURN_ON_TRUE(ret_val, ret_val,
+        close(p_data->conn_msg_s);
+        close(p_data->work_msg_s));
     LOG("}> done\n");
 
     LOG("}> user stack initiation:\n");
     user_stack *user_base = data_base_init();
     _RETURN_ON_TRUE(!user_base, ret_val,
-        req_queue->methods.stack_destructor(req_queue);
-        hosts->methods.stack_destructor(hosts));
+        hosts->methods.stack_destructor(hosts);
+        close(p_data->conn_msg_s);
+        close(p_data->work_msg_s));
     LOG("}> done\n");
 
-    stacks->data_base       = user_base;
-    stacks->active_hosts    = hosts;
-    stacks->requests_queue  = req_queue;
+    p_data->data_base       = user_base;
+    p_data->active_hosts    = hosts;
+    //p_data->requests_queue  = req_queue;
     
     return 0;
 }
 
-no_ret_val_t stacks_destr(stacks_st *stacks)
+no_ret_val_t stacks_destr(process_data_st *p_data)
 {   
-    assert(stacks);
+    assert(p_data);
+
+    close(p_data->conn_msg_s);
+    close(p_data->work_msg_s);
+
+    unlink(CONN_WORK_UNIX_SOCKET_PATH);
+    unlink(USER_WORK_UNIX_SOCKET_PATH);
         
-    stacks->data_base->methods.stack_destructor(stacks->data_base);
-    stacks->active_hosts->methods.stack_destructor(stacks->active_hosts);
-    stacks->requests_queue->methods.stack_destructor(stacks->requests_queue);
+    //msgctl(p_data->conn_msg_d, IPC_RMID, NULL);
+    //msgctl(p_data->work_msg_d, IPC_RMID, NULL);
+
+    finish_db_work(p_data->data_base);
+    //p_data->data_base->methods.stack_destructor(p_data->data_base);
+    p_data->active_hosts->methods.stack_destructor(p_data->active_hosts);
+    //p_data->requests_queue->methods.stack_destructor(p_data->requests_queue);
 
     return;
 }
@@ -134,30 +184,55 @@ user_stack *data_base_init()
     return user_base;
 }
 
-ret_t poll_cycle(stacks_st *stacks, const msqd_t msgd)
+no_ret_val_t poll_cycle(process_data_st *p_data)
 {
-    assert(stacks);
+    assert(p_data);
 
     ret_t poll_ret_val = 0;
 
     while (1)
     {
-        if (update_active_hosts(stacks->active_hosts, msgd) == 1) LOG("}> new host added\n");
+        if (update_active_hosts(p_data) == 1) LOG("}> new host added\n");
 
-        poll_ret_val = poll(stacks->active_hosts->hosts, stacks->active_hosts->hosts_number, HOST_RQST_TIME);
+        poll_ret_val = poll(p_data->active_hosts->hosts, p_data->active_hosts->hosts_number, HOST_RQST_TIME);
+        if (poll_ret_val == -1)
+        {
+            LOG_ERR("}> poll error:");
+            continue;
+        }
         
-        
+        LOG("}> poll_ret_val = %d\n", poll_ret_val);
+
+        send_new_request(p_data, poll_ret_val);
+
+        if (0) break;
     }
+
+    return;
 }
 
-ret_t send_new_request(stacks_st *stacks, ret_t poll_ret_val)
+no_ret_val_t send_new_request(process_data_st *p_data, ret_t poll_ret_val)
 {
-    if (!poll_ret_val) return 0;
+    if (!poll_ret_val) return;
 
-    for (long unsigned int i = 0; i < stacks->active_hosts->hosts_number; i++)
-        if (stacks->active_hosts->hosts[i].revents & POLLIN)
+    p_data->active_hosts->methods.dump(p_data->active_hosts);
+
+    for (long unsigned int host_num = 0; host_num < p_data->active_hosts->hosts_number; host_num++)
+    {
+        LOG("}> REVENT VALUE: %d, REVENT MASK: %d\n", p_data->active_hosts->hosts[host_num].revents, p_data->active_hosts->hosts[host_num].revents & POLLIN);
+        if (p_data->active_hosts->hosts[host_num].revents & POLLIN)
         {
-            //msgsnd()
+            LOG("}> found requesting socket in host num: %d\n", host_num);
+            /*struct msgbuf send_data = {};
+            send_data.mtype = 2;
+            send_data.descr = p_data->active_hosts->hosts[host_num].fd;*/
+
+            if (send_open_file_descriptor(p_data->work_msg_s, p_data->active_hosts->hosts[host_num].fd) == -1) \
+                LOG_ERR("}> msg snd error:");
+
+            p_data->active_hosts->hosts[host_num].revents = 0;
         }
+    }
     
+    return;
 }
