@@ -61,6 +61,8 @@ sockd_t connect_to_unix_socket(const char *socket_path)
     _RETURN_ON_TRUE(connect(sock, (struct sockaddr *) &addr, sizeof(addr)) == -1, -1,
         LOG_ERR(">> couldn't connect to listen socket:"));
 
+    LOG(">> connection success\n");
+
     return sock;
 }
 
@@ -142,5 +144,6 @@ ret_t send_open_file_descriptor(sockd_t sock_d, int opened_fd)
     ssize_t ret_val = sendmsg(sock_d, &msgh, 0);
     _RETURN_ON_TRUE(ret_val == -1, -1, LOG_ERR(">> message send error:"));
 
+    LOG(">> descriptor sent\n");
     return 0;
 }
