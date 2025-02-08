@@ -32,15 +32,6 @@ ret_t connection_manage_process()
     sockd_t listen_socket_fd = create_listen_socket(&server_adress);
     _RETURN_ON_TRUE(listen_socket_fd == -1, -1);
 
-    /*LOG("> creating server ipc bind\n");
-    sockd_t msgd = init_ipc(1, IPC_CREAT | IPC_EXCL | 0777);
-    _RETURN_ON_TRUE(msgd == -1, -1, close(listen_socket_fd));
-    LOG("> ipc bind created\n");
-
-    _RETURN_ON_TRUE(test_msg(msgd, SND, 1) == -1, -1,
-        close(listen_socket_fd);
-        msgctl(msgd, IPC_RMID, NULL));*/
-
     //Временно
     sleep(1);
     sockd_t msg_sock = connect_to_unix_socket(CONN_WORK_UNIX_SOCKET_PATH);
@@ -52,7 +43,6 @@ ret_t connection_manage_process()
         func_ret_val = connection_attempt_handler(msg_sock, listen_socket_fd, &server_adress);
 
     close(msg_sock);
-    //if (msgctl(msgd, IPC_RMID, NULL) == -1) LOG_ERR("> msg queue rm err:");
     
     return func_ret_val;
 }
@@ -101,7 +91,6 @@ ret_t connection_attempt_handler(const sockd_t msg_sock, const sockd_t listen_de
     _RETURN_ON_TRUE(new_conn == -1, -1, LOG_ERR("> couldn't create new connection:"));
     LOG("> connection occured, sending new socket \"%d\" descriptor to socket stack\n", new_conn);
 
-    //struct msgbuf data = {1, new_conn};
     _RETURN_ON_TRUE(send_open_file_descriptor(msg_sock, new_conn) == -1, -1);
     LOG("> new socket data sent\n");
 

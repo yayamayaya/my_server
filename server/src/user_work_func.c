@@ -14,10 +14,6 @@ ret_t user_work_process()
     ssize_t bytes_rcvd = 0;
 
     LOG("/> inititating user work ipc\n");
-    /*sockd_t msg_sock = init_ipc(2, IPC_CREAT | IPC_EXCL | 0777);
-    _RETURN_ON_TRUE(msg_sock == -1, -1);
-    _RETURN_ON_TRUE(test_msg(msg_sock, RCV, 2) == -1, -1,
-    msgctl(msg_sock, IPC_RMID, NULL));*/
     
     //Временно
     sleep(1);
@@ -39,7 +35,8 @@ ret_t user_work_process()
         msg_sock_poll.revents = 0;
 
         sockd_t req_socket = rcv_open_file_descriptor(msg_sock);
-        if (req_socket == -1) LOG("/> error occured while rcving request socket\n");
+        _RETURN_ON_TRUE(req_socket == -1, -1, 
+            LOG("/> error occured while rcving from unix socket\n"));
 
         LOG("/> requesting socket descr is: %d\n", req_socket);
 
@@ -47,7 +44,7 @@ ret_t user_work_process()
         char data[32] = {0};
         bytes_rcvd = recv(req_socket, data, 32 * sizeof(char), 0);
         if (bytes_rcvd == -1) LOG_ERR("/> recv failed:");
-        else LOG("%s\n", data);
+        else LOG("/> data given is: \"%s\"\n", data);
     }
 
 
