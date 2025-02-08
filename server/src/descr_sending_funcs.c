@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/socket.h>
+#include <errno.h>
 #include <sys/un.h>
 #include "descr_sending_funcs.h"
 
@@ -23,7 +24,7 @@ sockd_t open_unix_listen_socket(const char *socket_path)
         LOG_ERR(">> UNIX socket bind error:");
         close(sock_d));
     
-    ret_val = listen(sock_d, 5);
+    ret_val = listen(sock_d, NUMBER_OF_CONN_REQS);
     _RETURN_ON_TRUE(ret_val == -1, -1,
         LOG_ERR(">> UNIX socket listen() error:");
         close(sock_d));
@@ -32,7 +33,7 @@ sockd_t open_unix_listen_socket(const char *socket_path)
     return sock_d;
 }
 
-ret_t accept_unix_connection(sockd_t listen_sock_d, const char *socket_path)
+sockd_t accept_unix_connection(sockd_t listen_sock_d, const char *socket_path)
 {
     struct sockaddr_un addr = {0};
     addr.sun_family = AF_UNIX;
@@ -41,10 +42,17 @@ ret_t accept_unix_connection(sockd_t listen_sock_d, const char *socket_path)
     LOG(">> establishing connection with other process\n");
     socklen_t socklen = sizeof(addr);
     int conn_sock = accept(listen_sock_d, (struct sockaddr *)&addr, &socklen);
-    _RETURN_ON_TRUE(conn_sock == -1, -1, LOG_ERR(">> couldn't connect to requesting socket:"));
+    _RETURN_ON_TRUE(conn_sock == -1, -1, 
+        LOG_ERR(">> couldn't connect to requesting socket:");
+        close(listen_sock_d));
+
+    LOG(">> connection socket is: %d\n", conn_sock);
+
     LOG(">> done\n");
     
-    return 0;
+    close(listen_sock_d);
+
+    return conn_sock;
 }
 
 sockd_t connect_to_unix_socket(const char *socket_path)

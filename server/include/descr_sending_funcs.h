@@ -7,9 +7,12 @@
 #define CONN_WORK_UNIX_SOCKET_PATH "/tmp/server_conn_unix_socket"
 #define USER_WORK_UNIX_SOCKET_PATH "/tmp/server_user_unix_socket"
 
+#define NUMBER_OF_CONN_REQS         15
+#define NO_MESSAGE                  1
+
 sockd_t open_unix_listen_socket(const char *socket_path);
 
-ret_t accept_unix_connection(sockd_t listen_sock_d, const char *socket_path);
+sockd_t accept_unix_connection(sockd_t listen_sock_d, const char *socket_path);
 
 sockd_t connect_to_unix_socket(const char *socket_path);
 
