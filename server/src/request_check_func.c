@@ -32,14 +32,6 @@ ret_t request_check_process()
     _RETURN_ON_TRUE(ret_val, ret_val);
 
     LOG("}> waiting for first hosts:\n");
-    ret_t update_ret_val = 0;
-    while (1)
-    {
-        update_ret_val = update_active_hosts(&p_data);
-        if (update_ret_val == 1) break;
-        _RETURN_ON_TRUE(update_ret_val, update_ret_val);
-    }
-    LOG("}> first host connected, starting full work:\n");
 
     poll_cycle(&p_data);
 
@@ -60,13 +52,14 @@ ret_t update_active_hosts(process_data_st *p_data)
 
     LOG("}> updating active hosts:\n");
 
-    ret_t ret_val = poll(&msg_descr, 1, HOST_UPDATE_TIME);
+    ret_t ret_val = poll(&msg_descr, 1, 0);
+    //LOG("}> poll ret_val is: %d, revent is: %d\n", ret_val, msg_descr.revents);
     _RETURN_ON_TRUE(ret_val == -1, 0, LOG_ERR("}> poll error:"));
     if (!ret_val) return 0;
     LOG("}> HOST REVENT: %d\n", msg_descr.revents);
 
-    //struct msgbuf data = {};
     int rcvd_descr = rcv_open_file_descriptor(p_data->conn_msg_s);
+    LOG("> rcvd host descr == %d\n", rcvd_descr);
     _RETURN_ON_TRUE(rcvd_descr == -1, -1);
 
     struct pollfd host_descr = {};
@@ -81,42 +74,21 @@ ret_t create_all_process_data(process_data_st *p_data)
 {
     assert(p_data);
 
-    /*LOG("}> request queue creation:\n");
-    req_stack *req_queue = NULL;
-    ret_t ret_val = init_req_stack(&req_queue);
-    _RETURN_ON_TRUE(ret_val, ret_val);
-    LOG("}> done\n");*/
-
     LOG("}> creating connection msg line ipc:\n");
-    /*msqd_t msgd = init_ipc(1, 0);
-    _RETURN_ON_TRUE(msgd == -1, -1);
-    _RETURN_ON_TRUE(test_msg(msgd, RCV, 1) == -1, -1,
-        msgctl(p_data->conn_msg_d, IPC_RMID, NULL));
-    p_data->conn_msg_d = msgd;
-
-    LOG("}> creating user work msg line ipc:\n");
-    msgd = init_ipc(2, 0);
-    _RETURN_ON_TRUE(msgd == -1, -1, 
-        msgctl(p_data->conn_msg_d, IPC_RMID, NULL));
-    _RETURN_ON_TRUE(test_msg(msgd, SND, 2) == -1, -1, 
-        msgctl(p_data->conn_msg_d, IPC_RMID, NULL);
-        msgctl(p_data->work_msg_d, IPC_RMID, NULL));
-    p_data->work_msg_d = msgd;*/
 
     sockd_t conn_manager_listen_socket = open_unix_listen_socket(CONN_WORK_UNIX_SOCKET_PATH);
     _RETURN_ON_TRUE(conn_manager_listen_socket == -1, -1);
     sockd_t user_work_listen_socket    = open_unix_listen_socket(USER_WORK_UNIX_SOCKET_PATH);
     _RETURN_ON_TRUE(user_work_listen_socket == -1, -1, close(conn_manager_listen_socket));
 
-    sockd_t conn_manager_socket = accept_unix_connection(conn_manager_listen_socket, CONN_WORK_UNIX_SOCKET_PATH);
+    sockd_t conn_manager_socket \
+        = accept_unix_connection(conn_manager_listen_socket, CONN_WORK_UNIX_SOCKET_PATH);
     _RETURN_ON_TRUE(conn_manager_socket == -1, -1,
-        close(conn_manager_listen_socket);
         close(user_work_listen_socket));
-    sockd_t user_work_socket    = accept_unix_connection(user_work_listen_socket, USER_WORK_UNIX_SOCKET_PATH);
+    sockd_t user_work_socket    \
+        = accept_unix_connection(user_work_listen_socket, USER_WORK_UNIX_SOCKET_PATH);
     _RETURN_ON_TRUE(user_work_socket == -1, -1,
-        close(conn_manager_socket);
-        close(conn_manager_listen_socket);
-        close(user_work_listen_socket));
+        close(conn_manager_socket));
 
     p_data->conn_msg_s = conn_manager_socket;
     LOG("}> connection manager socket: %d\n", conn_manager_socket);
@@ -141,7 +113,6 @@ ret_t create_all_process_data(process_data_st *p_data)
 
     p_data->data_base       = user_base;
     p_data->active_hosts    = hosts;
-    //p_data->requests_queue  = req_queue;
     
     return 0;
 }
@@ -155,14 +126,9 @@ no_ret_val_t stacks_destr(process_data_st *p_data)
 
     unlink(CONN_WORK_UNIX_SOCKET_PATH);
     unlink(USER_WORK_UNIX_SOCKET_PATH);
-        
-    //msgctl(p_data->conn_msg_d, IPC_RMID, NULL);
-    //msgctl(p_data->work_msg_d, IPC_RMID, NULL);
 
     finish_db_work(p_data->data_base);
-    //p_data->data_base->methods.stack_destructor(p_data->data_base);
     p_data->active_hosts->methods.stack_destructor(p_data->active_hosts);
-    //p_data->requests_queue->methods.stack_destructor(p_data->requests_queue);
 
     return;
 }
@@ -194,6 +160,7 @@ no_ret_val_t poll_cycle(process_data_st *p_data)
     {
         if (update_active_hosts(p_data) == 1) LOG("}> new host added\n");
 
+        poll_ret_val = 0;
         poll_ret_val = poll(p_data->active_hosts->hosts, p_data->active_hosts->hosts_number, HOST_RQST_TIME);
         if (poll_ret_val == -1)
         {
@@ -223,14 +190,11 @@ no_ret_val_t send_new_request(process_data_st *p_data, ret_t poll_ret_val)
         if (p_data->active_hosts->hosts[host_num].revents & POLLIN)
         {
             LOG("}> found requesting socket in host num: %d\n", host_num);
-            /*struct msgbuf send_data = {};
-            send_data.mtype = 2;
-            send_data.descr = p_data->active_hosts->hosts[host_num].fd;*/
 
             if (send_open_file_descriptor(p_data->work_msg_s, p_data->active_hosts->hosts[host_num].fd) == -1) \
                 LOG_ERR("}> msg snd error:");
 
-            p_data->active_hosts->hosts[host_num].revents = 0;
+            //p_data->active_hosts->hosts[host_num].revents = 0;
         }
     }
     
