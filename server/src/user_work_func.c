@@ -2,21 +2,25 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include "debugging.h"
 #include "connection_work_func.h"
 #include "msg_ipc.h"
 #include "user_work_func.h"
 #include "descr_sending_funcs.h"
+#include "sig_handlers.h"
 
-ret_t user_work_process()
+ret_t user_work_process(const pid_t req_pid)
 {  
-    ssize_t bytes_rcvd = 0;
-
-    LOG("/> inititating user work ipc\n");
+    LOG("> setting sighandlers:\n");
+    ret_t ret_val = set_sigint_handler();
+    _RETURN_ON_TRUE(ret_val, ret_val);
+    ret_val = set_sigrt_handler();
+    _RETURN_ON_TRUE(ret_val, ret_val);
     
-    //Временно
-    sleep(1);
+    while (!check_unix_sockets_status());
+    kill(getppid(), SIGRTMIN);
 
     LOG("/> connecting to unix socket:\n");
     sockd_t msg_sock = connect_to_unix_socket(USER_WORK_UNIX_SOCKET_PATH);
@@ -28,8 +32,10 @@ ret_t user_work_process()
     msg_sock_poll.events    = POLLIN;
 
     LOG("/> waiting for first requests\n");
-    while(1)
+    while (1)
     {
+        if (check_kill_server_var()) break;
+
         if (!poll(&msg_sock_poll, 1, UNIX_SOCKET_POLL_TIMEOUT)) continue;
         LOG("/> UNIX SOCKET REVENT: %d\n", msg_sock_poll.revents);
         msg_sock_poll.revents = 0;
@@ -40,13 +46,24 @@ ret_t user_work_process()
 
         LOG("/> requesting socket descr is: %d\n", req_socket);
 
-        LOG("/> recieving test data from descriptor: \n");
+        LOG("}> recieving test data from descriptor: \n");
         char data[32] = {0};
-        bytes_rcvd = recv(req_socket, data, 32 * sizeof(char), 0);
-        if (bytes_rcvd == -1) LOG_ERR("/> recv failed:");
-        else LOG("/> data given is: \"%s\"\n", data);
+        ssize_t bytes_rcvd = recv(req_socket, data, 32 * sizeof(char), 0);
+        LOG("}> bytes recieved: %d\n", bytes_rcvd);
+        if (bytes_rcvd == 0)
+        {
+            LOG("}> the connection have been closed\n");
+            close(req_socket);
+            continue;
+        }
+        
+        if (bytes_rcvd == -1) LOG_ERR("}> recv failed:");
+        else LOG("}> data given is: \"%s\"\n", data);
     }
 
 
+    close(msg_sock);
+
+    return 0;
     //Работа с нитями
 }
