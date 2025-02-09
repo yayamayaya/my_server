@@ -9,6 +9,7 @@
 #include <sys/un.h>
 #include "descr_sending_funcs.h"
 
+
 sockd_t open_unix_listen_socket(const char *socket_path)
 {
     LOG(">> creating UNIX listen socket with for path: %s\n", socket_path);
@@ -99,7 +100,7 @@ int rcv_open_file_descriptor(sockd_t sock_d)
     msgh.msg_control    = control_msg.buff;
     msgh.msg_controllen = sizeof(control_msg.buff);
 
-    LOG(">> recieving a file descriptor from unix socket...\n");
+    LOG(">> recieving a file descriptor from unix socket %d...\n", sock_d);
     ssize_t ret_val = recvmsg(sock_d, &msgh, 0);
     _RETURN_ON_TRUE(ret_val == -1, -1, LOG_ERR(">> recvmsg error:"));
 
@@ -148,10 +149,10 @@ ret_t send_open_file_descriptor(sockd_t sock_d, int opened_fd)
     cmsgp->cmsg_len     = CMSG_LEN(sizeof(int));
     memcpy(CMSG_DATA(cmsgp), &opened_fd, sizeof(int));
 
-    LOG(">> sending active file descriptor through the socket\n");
+    LOG(">> sending active file %d descriptor through the socket number: %d\n", opened_fd, sock_d);
     ssize_t ret_val = sendmsg(sock_d, &msgh, 0);
     _RETURN_ON_TRUE(ret_val == -1, -1, LOG_ERR(">> message send error:"));
 
-    LOG(">> descriptor sent\n");
+    LOG(">> descriptor %d sent\n", opened_fd);
     return 0;
 }

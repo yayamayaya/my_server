@@ -22,7 +22,7 @@ ret_t run_server()
     
     pid_t req_proc_id = fork();
     _RETURN_ON_TRUE(req_proc_id == -1, -1, LOG_ERR(">> couldn't create new process:"));
-    _RETURN_ON_TRUE(req_proc_id, user_work_process());
+    _RETURN_ON_TRUE(req_proc_id, user_work_process(req_proc_id));
 
     return request_check_process();
 }
