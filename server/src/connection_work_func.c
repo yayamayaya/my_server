@@ -10,6 +10,7 @@
 #include "connection_work_func.h"
 #include "msg_ipc.h"
 #include "descr_sending_funcs.h"
+#include "sig_handlers.h"
 
 extern int server_shutdown;
 
@@ -19,10 +20,15 @@ sockd_t create_listen_socket(const struct sockaddr_in *server_address);
 
 ret_t connection_attempt_handler(const sockd_t msg_sock, const sockd_t listen_descr, struct sockaddr_in *server_address);
 
-//Избежать гонки за сокетом с помощью сигнала
 
 ret_t connection_manage_process()
 {
+    LOG("> setting sighandlers:\n");
+    ret_t ret_val = set_sigint_handler();
+    _RETURN_ON_TRUE(ret_val, ret_val);
+    ret_val = set_sigrt_handler();
+    _RETURN_ON_TRUE(ret_val, ret_val);
+
     LOG("> starting server interface:\n");
     LOG("> setting server adress:\n");
     struct sockaddr_in server_adress = server_addr_create();
@@ -32,14 +38,14 @@ ret_t connection_manage_process()
     sockd_t listen_socket_fd = create_listen_socket(&server_adress);
     _RETURN_ON_TRUE(listen_socket_fd == -1, -1);
 
-    //Временно
-    sleep(1);
+    while (!check_unix_sockets_status());
+  
     sockd_t msg_sock = connect_to_unix_socket(CONN_WORK_UNIX_SOCKET_PATH);
     _RETURN_ON_TRUE(msg_sock == -1, -1, close(listen_socket_fd));
     
     LOG("> connection attempt handler start:\n");
     ret_t func_ret_val = 0;
-    while (!func_ret_val)//!server_shutdown)
+    while (!check_kill_server_var())
         func_ret_val = connection_attempt_handler(msg_sock, listen_socket_fd, &server_adress);
 
     close(msg_sock);
@@ -83,7 +89,6 @@ ret_t connection_attempt_handler(const sockd_t msg_sock, const sockd_t listen_de
     sock_fd.fd      = listen_descr;
     sock_fd.events  = POLLIN;
 
-    LOG("> waiting for new connection attempt\n");
     _RETURN_ON_TRUE(poll(&sock_fd, 1, CONN_REFRESH_TIME) == 0, 0);
     LOG("> LISTEN SOCKET REVENTS: %d\n", sock_fd.revents);
 
