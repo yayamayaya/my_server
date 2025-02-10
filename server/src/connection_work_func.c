@@ -11,6 +11,7 @@
 #include "msg_ipc.h"
 #include "descr_sending_funcs.h"
 #include "sig_handlers.h"
+#include "sem_sync.h"
 
 extern int server_shutdown;
 
@@ -26,8 +27,6 @@ ret_t connection_manage_process()
     LOG("> setting sighandlers:\n");
     ret_t ret_val = set_sigint_handler();
     _RETURN_ON_TRUE(ret_val, ret_val);
-    ret_val = set_sigrt_handler();
-    _RETURN_ON_TRUE(ret_val, ret_val);
 
     LOG("> starting server interface:\n");
     LOG("> setting server adress:\n");
@@ -38,8 +37,9 @@ ret_t connection_manage_process()
     sockd_t listen_socket_fd = create_listen_socket(&server_adress);
     _RETURN_ON_TRUE(listen_socket_fd == -1, -1);
 
-    while (!check_unix_sockets_status());
-  
+    _RETURN_ON_TRUE(wait_for_unix_socket_status() == -1, -1,
+        LOG_ERR("> sem wait error:"));
+
     sockd_t msg_sock = connect_to_unix_socket(CONN_WORK_UNIX_SOCKET_PATH);
     _RETURN_ON_TRUE(msg_sock == -1, -1, close(listen_socket_fd));
     
