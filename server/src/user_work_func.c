@@ -10,17 +10,16 @@
 #include "user_work_func.h"
 #include "descr_sending_funcs.h"
 #include "sig_handlers.h"
+#include "sem_sync.h"
 
 ret_t user_work_process(const pid_t req_pid)
 {  
     LOG("> setting sighandlers:\n");
     ret_t ret_val = set_sigint_handler();
     _RETURN_ON_TRUE(ret_val, ret_val);
-    ret_val = set_sigrt_handler();
-    _RETURN_ON_TRUE(ret_val, ret_val);
     
-    while (!check_unix_sockets_status());
-    kill(getppid(), SIGRTMIN);
+    _RETURN_ON_TRUE(wait_for_unix_socket_status() == -1, -1,
+        LOG_ERR("/> sem wait error:"));
 
     LOG("/> connecting to unix socket:\n");
     sockd_t msg_sock = connect_to_unix_socket(USER_WORK_UNIX_SOCKET_PATH);
