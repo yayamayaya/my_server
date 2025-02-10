@@ -24,7 +24,7 @@ ret_t update_active_hosts(process_data_st *p_data);
 
 no_ret_val_t poll_cycle(process_data_st *p_data);
 
-no_ret_val_t send_new_request(process_data_st *p_data, ret_t poll_ret_val);
+no_ret_val_t send_new_request(process_data_st *p_data);
 
 //TO DO: перенос стека пользователей в процесс рабоыт с пользователями
 
@@ -110,7 +110,7 @@ no_ret_val_t stacks_destr(process_data_st *p_data)
     unlink(USER_WORK_UNIX_SOCKET_PATH);
 
     //finish_db_work(p_data->data_base);
-    //p_data->active_hosts->methods.stack_destructor(p_data->active_hosts);
+    p_data->active_hosts->methods.stack_destructor(p_data->active_hosts);
 
     return;
 }
@@ -151,7 +151,7 @@ no_ret_val_t poll_cycle(process_data_st *p_data)
         return;
     }
     
-    send_new_request(p_data, poll_ret_val);
+    send_new_request(p_data);
 
     return;
 }
@@ -162,30 +162,28 @@ ret_t update_active_hosts(process_data_st *p_data)
 
     host_stack *hosts = p_data->active_hosts;
 
-    static struct pollfd msg_descr = {0};
-    msg_descr.fd        = p_data->conn_msg_s;
-    msg_descr.events    = POLLIN;
+    static struct pollfd poll_str = {0};
+    poll_str.fd        = p_data->conn_msg_s;
+    poll_str.events    = POLLIN;
 
-    ret_t ret_val = poll(&msg_descr, 1, 0);
+    ret_t ret_val = poll(&poll_str, 1, 0);
     _RETURN_ON_TRUE(ret_val == -1, 0, LOG_ERR("}> poll error:"));
     _RETURN_ON_TRUE(ret_val ==  0, 0);
-    LOG("}> new host revent: %d\n", msg_descr.revents);
+    LOG("}> new host revent: %d\n", poll_str.revents);
 
     int rcvd_descr = rcv_open_file_descriptor(p_data->conn_msg_s);
     _RETURN_ON_TRUE(rcvd_descr == -1, -1);
     LOG("}> new host descr == %d\n", rcvd_descr);
 
-    struct pollfd host_descr = {};
-    host_descr.fd       = rcvd_descr;
-    host_descr.events   = POLLIN;
-    _RETURN_ON_TRUE(hosts->methods.add_host(hosts, host_descr), HOST_ARR_REALLC_ERR);
+    poll_str.fd = rcvd_descr;
+    _RETURN_ON_TRUE(hosts->methods.add_host(hosts, poll_str), HOST_ARR_REALLC_ERR);
 
     LOG("}> new host added\n");
 
     return 1;
 }
 
-no_ret_val_t send_new_request(process_data_st *p_data, ret_t poll_ret_val)
+no_ret_val_t send_new_request(process_data_st *p_data)
 {
     int data_type       = 0;
     sockd_t host_sock   = 0;
