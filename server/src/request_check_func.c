@@ -11,6 +11,7 @@
 #include "debugging.h"
 #include "descr_sending_funcs.h"
 #include "sig_handlers.h"
+#include "sem_sync.h"
 
 
 ret_t create_all_process_data(process_data_st *p_data);
@@ -59,7 +60,8 @@ ret_t create_all_process_data(process_data_st *p_data)
     sockd_t user_work_listen_socket    = open_unix_listen_socket(USER_WORK_UNIX_SOCKET_PATH);
     _RETURN_ON_TRUE(user_work_listen_socket == -1, -1, close(conn_manager_listen_socket));
 
-    kill(getppid(), SIGRTMIN);
+    _RETURN_ON_TRUE(set_unix_socket_status_true() == -1, -1,
+        LOG_ERR("}> sem post error:"));
 
     p_data->conn_msg_s \
         = accept_unix_connection(conn_manager_listen_socket, CONN_WORK_UNIX_SOCKET_PATH);
