@@ -8,7 +8,7 @@
 #include "server_start.h"
 #include "connection_work_func.h"
 #include "user_work_func.h"
-#include "request_check_func.h"
+#include "request_handle_func.h"
 #include "sem_sync.h"
 
 ret_t run_server()

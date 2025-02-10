@@ -6,7 +6,7 @@
 #include <sys/socket.h>
 #include "data_base_stack.h"
 #include "data_base_work.h"
-#include "request_check_func.h"
+#include "request_handle_func.h"
 #include "msg_ipc.h"
 #include "debugging.h"
 #include "descr_sending_funcs.h"
