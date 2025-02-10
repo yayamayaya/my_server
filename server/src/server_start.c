@@ -9,10 +9,14 @@
 #include "connection_work_func.h"
 #include "user_work_func.h"
 #include "request_check_func.h"
+#include "sem_sync.h"
 
 ret_t run_server()
 {
     LOG(">> initialising server:\n");
+
+    LOG("> creating status semaphore...\n");
+    _RETURN_ON_TRUE(socket_sem_init() == -1, -1);
 
     LOG(">> creating second process:\n");
     //Creating user work process
