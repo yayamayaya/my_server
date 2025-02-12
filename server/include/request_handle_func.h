@@ -3,7 +3,7 @@
 
 #include "debugging.h"
 #include "data_base_stack.h"
-#include "msg_ipc.h"
+#include "connection_work_func.h"
 #include "active_hosts_stack.h"
 
 #define HOST_UPDATE_TIME 5000

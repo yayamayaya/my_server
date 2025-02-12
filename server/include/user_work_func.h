@@ -5,6 +5,6 @@
 
 #define UNIX_SOCKET_POLL_TIMEOUT 5000
 
-ret_t user_work_process(const pid_t req_pid);
+ret_t user_work_process();//const pid_t req_pid);
 
 #endif
