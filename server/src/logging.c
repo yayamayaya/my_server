@@ -5,12 +5,14 @@
 #include <stdarg.h>
 #include "debugging.h"
 
-#define LOG_PATH "./logs/server.log"
+#define LOG_PATH "./server.log"
 
 static FILE *log_file = NULL;
 //сделать mkdir
 void open_log()
 {
+
+
     log_file = fopen(LOG_PATH, "wb");
     if (!log_file) printf("> couldn't open log file for server, resuming work without logs\n");
     

@@ -8,7 +8,6 @@
 #include <arpa/inet.h>
 #include "debugging.h"
 #include "connection_work_func.h"
-#include "msg_ipc.h"
 #include "descr_sending_funcs.h"
 #include "sig_handlers.h"
 #include "sem_sync.h"

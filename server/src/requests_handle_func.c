@@ -7,12 +7,10 @@
 #include "data_base_stack.h"
 #include "data_base_work.h"
 #include "request_handle_func.h"
-#include "msg_ipc.h"
 #include "debugging.h"
 #include "descr_sending_funcs.h"
 #include "sig_handlers.h"
 #include "sem_sync.h"
-
 
 ret_t create_all_process_objects(process_data_st *p_data);
 
@@ -183,6 +181,7 @@ ret_t update_active_hosts(process_data_st *p_data)
     return 1;
 }
 
+//Сделать синхронизацию
 no_ret_val_t send_new_request(process_data_st *p_data)
 {
     int data_type       = 0;

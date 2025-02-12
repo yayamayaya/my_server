@@ -3,8 +3,6 @@
 #include <assert.h>
 #include <memory.h>
 #include "active_hosts_stack.h"
-//#include <unistd.h>
-//#include <string.h>
 #include "debugging.h"
 
 no_ret_val_t host_stack_destructor(host_stack *self);
